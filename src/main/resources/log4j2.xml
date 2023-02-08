@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="error" name="MyApp" packages="">
+    <Appenders>
+
+        <!-- 输出到控制台 -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <!-- 需要记录的级别 -->
+            <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout
+                    pattern="%d{yyyy-MM-dd HH:mm:ss,SSS}:%highlight{[%p]}{ERROR=RED, WARN=Yellow, INFO=Green, DEBUG=Cyan, TRACE=White} %t %style{(%F:%L)}{magenta} - %m%n"/>
+        </Console>
+        <!-- 输出到文件，按天或者超过80MB分割 -->
+        <RollingFile name="RollingFile" fileName="logs/trace.log" append="true"
+                     filePattern="logs/$${date:yyyy-MM}/trace-%d{yyyy-MM-dd}-%i.log.gz">
+            <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS}:%4p %t (%F:%L) - %m%n"/>
+            <Policies>
+                <!--  <OnStartupTriggeringPolicy /> -->
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="80 MB"/>
+            </Policies>
+        </RollingFile>
+
+        <!-- 输出告警和错误到文件，按天或者超过80MB分割 -->
+        <RollingFile name="RollingErrorFile" fileName="logs/error.log" append="true"
+                     filePattern="logs/$${date:yyyy-MM}/error-%d{yyyy-MM-dd}-%i.log.gz">
+            <ThresholdFilter level="warn" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS}:%4p %t (%F:%L) - %m%n"/>
+            <Policies>
+                <!--  <OnStartupTriggeringPolicy /> -->
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="80 MB"/>
+            </Policies>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+
+        <Root level="trace">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+            <AppenderRef ref="RollingErrorFile"/>
+        </Root>
+    </Loggers>
+</Configuration>
