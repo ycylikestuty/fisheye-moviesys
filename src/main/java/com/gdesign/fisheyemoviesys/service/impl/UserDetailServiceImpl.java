@@ -35,7 +35,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("用户不存在，请重新输入账号密码");
         }
         //将用户相关信息存入redis，到获取权限时再取出
-        redisUtil.set("User:" + username, userDTO, 3700);
+        redisUtil.set("User:" + username, userDTO, 86400);
         return new AccountUser(userDTO.getId(), userDTO.getUsername(), userDTO.getPassword(), null);
     }
 

@@ -3,7 +3,7 @@ package com.gdesign.fisheyemoviesys.filter;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.gdesign.fisheyemoviesys.constants.Constants;
 import com.gdesign.fisheyemoviesys.exception.CaptchaException;
-import com.gdesign.fisheyemoviesys.handle.LoginFailureHandler;
+import com.gdesign.fisheyemoviesys.handler.LoginFailureHandler;
 import com.gdesign.fisheyemoviesys.utils.RedisUtil;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;

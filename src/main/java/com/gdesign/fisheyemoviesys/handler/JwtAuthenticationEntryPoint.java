@@ -1,9 +1,9 @@
-package com.gdesign.fisheyemoviesys.handle;
+package com.gdesign.fisheyemoviesys.handler;
 
 import cn.hutool.json.JSONUtil;
 import com.gdesign.fisheyemoviesys.entity.dto.Result;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.ServletException;
@@ -17,21 +17,19 @@ import java.nio.charset.StandardCharsets;
  * @author ycy
  */
 @Component
-public class JwtAccessDeniedHandler implements AccessDeniedHandler {
+public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) throws IOException, ServletException {
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
         response.setContentType("application/json;charset=UTF-8");
-        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         ServletOutputStream outputStream = response.getOutputStream();
-
-        //将错误信息返回给前端
+        Result result = Result.fail("请先登录再访问！");
 //        ResponseMessageDTO<String> result= ResponseMessageDTO.<String>builder()
 //                .code(ErrorCodeEnum.LOGIN_CODE.getCode())
-//                .message(accessDeniedException.getMessage())
+//                .message("请先登录再访问！")
 //                .success(Boolean.FALSE)
 //                .build();
-        Result fail = Result.fail(accessDeniedException.getMessage());
-        outputStream.write(JSONUtil.toJsonStr(fail).getBytes(StandardCharsets.UTF_8));
+        outputStream.write(JSONUtil.toJsonStr(result).getBytes(StandardCharsets.UTF_8));
         outputStream.flush();
         outputStream.close();
     }

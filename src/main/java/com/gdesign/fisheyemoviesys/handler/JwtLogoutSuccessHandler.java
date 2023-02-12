@@ -1,4 +1,4 @@
-package com.gdesign.fisheyemoviesys.handle;
+package com.gdesign.fisheyemoviesys.handler;
 
 import cn.hutool.json.JSONUtil;
 import com.gdesign.fisheyemoviesys.entity.dto.Result;

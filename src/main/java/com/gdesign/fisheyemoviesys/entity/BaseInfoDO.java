@@ -28,15 +28,10 @@ public class BaseInfoDO implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date modifyTime;
     private Long modifyId;
-    @TableField(
-            value = "deleted",
-            fill = FieldFill.INSERT
-    )
+    @TableField(value = "deleted", fill = FieldFill.INSERT)
     private Integer deleted;
-    @TableField(
-            value = "version",
-            fill = FieldFill.INSERT
-    )
+
+    @TableField(value = "version", fill = FieldFill.INSERT)
     @Version
     private Long version;
 

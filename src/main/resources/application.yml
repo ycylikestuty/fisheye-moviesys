@@ -61,5 +61,6 @@ mybatis-plus:
 #配置jwt
 jwt:
   header: Authorization
-  expire: 3600
+  #24小时过期
+  expire: 86400
   secret: abcdefghabcdefghabcdefghabcdefgh

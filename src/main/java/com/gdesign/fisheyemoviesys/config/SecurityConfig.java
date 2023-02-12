@@ -2,7 +2,7 @@ package com.gdesign.fisheyemoviesys.config;
 
 import com.gdesign.fisheyemoviesys.filter.CaptchaFilter;
 import com.gdesign.fisheyemoviesys.filter.JwtAuthenticationFilter;
-import com.gdesign.fisheyemoviesys.handle.*;
+import com.gdesign.fisheyemoviesys.handler.*;
 import com.gdesign.fisheyemoviesys.service.impl.UserDetailServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
