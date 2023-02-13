@@ -73,6 +73,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     }
 
     @Override
+    public ResponseMessageDTO<List<Long>> getUserIdByLikeUserName(String username) {
+        LambdaQueryWrapper<UserDO> wrapper=new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getDeleted,DeleteEnum.NO_DELETE.getCode())
+                .like(StringUtils.isNotBlank(username),UserDO::getUsername,username);
+        List<Long> idList=this.list(wrapper).stream().map(UserDO::getId).collect(Collectors.toList());
+        return ResponseMessageDTO.success(idList);
+    }
+
+    @Override
     public String getUserAuthorityByUserName(String username) {
         //根据账号获取用户角色和操作权限
         UserDTO userDTO = (UserDTO) redisUtil.get("User:" + username);

@@ -1,6 +1,5 @@
 package com.gdesign.fisheyemoviesys.service.impl;
 
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -65,11 +64,11 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, MovieDO> implemen
             queryWrapper.eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
                     .like(StringUtils.isNotBlank(query.getName()), MovieDO::getName, query.getName())
                     .like(StringUtils.isNotBlank(query.getDirector()), MovieDO::getDirector, query.getDirector())
-                    .like(StrUtil.isNotBlank(query.getStarring()), MovieDO::getStarring, query.getStarring())
+                    .like(StringUtils.isNotBlank(query.getStarring()), MovieDO::getStarring, query.getStarring())
                     .eq(query.getArea() != null, MovieDO::getArea, query.getArea())
                     .orderByDesc(MovieDO::getYear);
             //获取type_id 在 query.getType()(List类型)中的 movie_id
-            List<Long> movieId = this.getMovieByTypeId(query.getType()).getResult();
+            List<Long> movieId = this.getMoviesByTypeId(query.getType()).getResult();
             //如果没有该类型的电影，则直接返回，否则再对queryWrapper进行拼接
             if (CollectionUtils.isEmpty(movieId)) {
                 return ResponseMessageDTO.success(PageResultDTO
@@ -115,7 +114,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, MovieDO> implemen
     }
 
     @Override
-    public ResponseMessageDTO<List<Long>> getMovieByTypeId(List<String> typeList) {
+    public ResponseMessageDTO<List<Long>> getMoviesByTypeId(List<String> typeList) {
         //如果typeList为空,则直接查询出所有未被删除的电影id
         if (CollectionUtils.isEmpty(typeList)) {
             LambdaQueryWrapper<MovieDO> wrapper = new LambdaQueryWrapper<MovieDO>()
@@ -245,5 +244,14 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, MovieDO> implemen
         List<Long> typeLongIds = typeService.list(typeQueryWrapper).stream().map(TypeDO::getId).collect(Collectors.toList());
         String type = typeLongIds.stream().map(Objects::toString).collect(Collectors.joining(","));
         return type;
+    }
+
+    @Override
+    public ResponseMessageDTO<List<Long>> getMovieIdByMovieName(String movieName) {
+        LambdaQueryWrapper<MovieDO> wrapper = new LambdaQueryWrapper<MovieDO>()
+                .eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
+                .like(StringUtils.isNotBlank(movieName), MovieDO::getName, movieName);
+        List<Long> idList = this.list(wrapper).stream().map(MovieDO::getId).collect(Collectors.toList());
+        return ResponseMessageDTO.success(idList);
     }
 }

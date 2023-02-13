@@ -28,7 +28,7 @@ public interface MovieService extends IService<MovieDO> {
      * @param typeList 类型名集
      * @return 电影id集
      */
-    ResponseMessageDTO<List<Long>> getMovieByTypeId(List<String> typeList);
+    ResponseMessageDTO<List<Long>> getMoviesByTypeId(List<String> typeList);
 
     /**
      * 逻辑删除电影
@@ -53,4 +53,12 @@ public interface MovieService extends IService<MovieDO> {
      * @return 新增成功与否
      */
     ResponseMessageDTO<String> addMovie(MovieDTO movieDTO);
+
+    /**
+     * 根据电影名模糊查询电影id
+     *
+     * @param movieName 电影名
+     * @return 电影id集
+     */
+    ResponseMessageDTO<List<Long>> getMovieIdByMovieName(String movieName);
 }

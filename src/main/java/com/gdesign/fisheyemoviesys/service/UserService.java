@@ -7,11 +7,27 @@ import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.UserDTO;
 import com.gdesign.fisheyemoviesys.entity.param.UserQuery;
 
+import java.util.List;
+
 /**
  * @author ycy
  */
 public interface UserService extends IService<UserDO> {
+    /**
+     * 根据准确的用户名查询
+     *
+     * @param username 准确的用户名
+     * @return 用户信息
+     */
     ResponseMessageDTO<UserDTO> getUserByUserName(String username);
+
+    /**
+     * 根据模糊的用户名查询
+     *
+     * @param username 模糊的用户名
+     * @return 用户id集
+     */
+    ResponseMessageDTO<List<Long>> getUserIdByLikeUserName(String username);
 
     String getUserAuthorityByUserName(String username);
 
