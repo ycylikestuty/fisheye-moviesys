@@ -33,4 +33,9 @@ public interface Constants {
      * 后台管理项目网址
      */
     String ADMIN_WEB = "http://localhost:8200";
+
+    /**
+     * 头像存储路径
+     */
+    String IMG_PATH = "http://localhost:8100/img";
 }

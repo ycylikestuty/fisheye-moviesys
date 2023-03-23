@@ -1,11 +1,14 @@
 package com.gdesign.fisheyemoviesys.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gdesign.fisheyemoviesys.constants.Constants;
 import com.gdesign.fisheyemoviesys.entity.MenuDO;
 import com.gdesign.fisheyemoviesys.entity.RoleDO;
@@ -13,6 +16,7 @@ import com.gdesign.fisheyemoviesys.entity.UserDO;
 import com.gdesign.fisheyemoviesys.entity.UserRoleDO;
 import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
+import com.gdesign.fisheyemoviesys.entity.dto.Result;
 import com.gdesign.fisheyemoviesys.entity.dto.UserDTO;
 import com.gdesign.fisheyemoviesys.entity.enums.CodeEnum;
 import com.gdesign.fisheyemoviesys.entity.enums.DeleteEnum;
@@ -24,12 +28,16 @@ import com.gdesign.fisheyemoviesys.service.UserRoleService;
 import com.gdesign.fisheyemoviesys.service.UserService;
 import com.gdesign.fisheyemoviesys.utils.ConversionUtils;
 import com.gdesign.fisheyemoviesys.utils.RedisUtil;
+import com.gdesign.fisheyemoviesys.utils.UploadUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.security.Principal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -53,6 +61,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     @Resource
     private UserRoleService userRoleService;
 
+//    @Resource
+//    private BCryptPasswordEncoder bCryptPasswordEncoder;
+
     @Override
     public ResponseMessageDTO<UserDTO> getUserByUserName(String username) {
         LambdaQueryWrapper<UserDO> queryWrapper = new LambdaQueryWrapper<UserDO>()
@@ -74,10 +85,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 
     @Override
     public ResponseMessageDTO<List<Long>> getUserIdByLikeUserName(String username) {
-        LambdaQueryWrapper<UserDO> wrapper=new LambdaQueryWrapper<UserDO>()
-                .eq(UserDO::getDeleted,DeleteEnum.NO_DELETE.getCode())
-                .like(StringUtils.isNotBlank(username),UserDO::getUsername,username);
-        List<Long> idList=this.list(wrapper).stream().map(UserDO::getId).collect(Collectors.toList());
+        LambdaQueryWrapper<UserDO> wrapper = new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
+                .like(StringUtils.isNotBlank(username), UserDO::getUsername, username);
+        List<Long> idList = this.list(wrapper).stream().map(UserDO::getId).collect(Collectors.toList());
         return ResponseMessageDTO.success(idList);
     }
 
@@ -195,5 +206,50 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             return ResponseMessageDTO.success("删除失败");
         }
         return ResponseMessageDTO.success("删除成功");
+    }
+
+    @Override
+    public Result updateImage(MultipartFile file, String userJson) throws JsonProcessingException {
+        if (!file.isEmpty()) {
+            String uploadImg = UploadUtil.uploadImg(file);
+            if (StrUtil.isEmpty(uploadImg)) {
+                return Result.fail("头像上传失败！");
+            }
+            ObjectMapper mapper = new ObjectMapper();
+            UserDTO userDTO = mapper.readValue(userJson, UserDTO.class);
+            UserDO userDO = new UserDO();
+            LambdaUpdateWrapper<UserDO> userUpdateWrapper = new LambdaUpdateWrapper<UserDO>()
+                    .set(UserDO::getImg, Constants.IMG_PATH + uploadImg)
+                    .eq(UserDO::getId, userDTO.getId());
+            if (this.update(userDO, userUpdateWrapper)) {
+                return Result.succ("头像上传成功！");
+            }
+        }
+        return Result.fail("头像上传失败！");
+    }
+
+    @Override
+    public Result updatePassword(String oldPassword, String newPassword, String confirmPassword, Principal principal) {
+        BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
+        if (!newPassword.equals(confirmPassword)){
+            return Result.fail("两次输入的密码不一致！");
+        }
+        LambdaQueryWrapper<UserDO> queryWrapper=new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getUsername,principal.getName())
+                .eq(UserDO::getDeleted,DeleteEnum.NO_DELETE.getCode());
+        UserDO userDO=this.getOne(queryWrapper);
+        if(!bCryptPasswordEncoder.matches(oldPassword,userDO.getPassword())){
+            return Result.fail("旧密码错误！");
+        }
+        //更新密码
+        LambdaUpdateWrapper<UserDO> updateWrapper=new LambdaUpdateWrapper<UserDO>()
+                .set(UserDO::getPassword,bCryptPasswordEncoder.encode(confirmPassword))
+                .eq(UserDO::getUsername,principal.getName());
+        UserDO newUserDO=new UserDO();
+        if(this.update(newUserDO,updateWrapper)){
+            return Result.succ("密码修改成功！");
+        }else {
+            return Result.succ("密码修改失败！");
+        }
     }
 }

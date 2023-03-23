@@ -25,7 +25,7 @@ public class LoginFailureHandler implements AuthenticationFailureHandler {
         ServletOutputStream outputStream = response.getOutputStream();
         String message = exception.getMessage();
         if (!"验证码错误".equals(message) && !"请刷新验证码".equals(message)) {
-            message = "用户名或密码错误1";
+            message = "用户名或密码错误";
         }
         Result fail = Result.fail(message);
 //        ResponseMessageDTO<String> fail= ResponseMessageDTO.<String>builder()

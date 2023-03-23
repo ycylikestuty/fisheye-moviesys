@@ -1,13 +1,19 @@
 package com.gdesign.fisheyemoviesys.controller;
 
 import cn.hutool.core.map.MapUtil;
+import cn.hutool.core.util.StrUtil;
 import com.gdesign.fisheyemoviesys.constants.Constants;
 import com.gdesign.fisheyemoviesys.entity.dto.Result;
 import com.gdesign.fisheyemoviesys.entity.dto.UserDTO;
+import com.gdesign.fisheyemoviesys.service.UserService;
 import com.gdesign.fisheyemoviesys.utils.RedisUtil;
+import com.gdesign.fisheyemoviesys.utils.UploadUtil;
 import com.google.code.kaptcha.Producer;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import sun.misc.BASE64Encoder;
 
 import javax.annotation.Resource;
@@ -24,9 +30,13 @@ import java.util.UUID;
  * @author ycy
  */
 @RestController
+@Slf4j
 public class KaptchaController {
     @Resource
     private Producer producer;
+
+    @Resource
+    private UserService userService;
 
     @Resource
     private RedisUtil redisUtil;
@@ -63,10 +73,22 @@ public class KaptchaController {
 
     @GetMapping("/userInfo")
     public Result userInfo(Principal principal) {
-        UserDTO userDTO = (UserDTO) redisUtil.get("User:" + principal.getName());
-        userDTO.setPassword("");
+//        UserDTO userDTO = (UserDTO) redisUtil.get("User:" + principal.getName());
+        UserDTO userDTO = userService.getUserByUserName(principal.getName()).getResult();
         Map<String, Object> map = new HashMap<>();
         map.put("user", userDTO);
         return Result.succ(map);
+    }
+
+    @PostMapping("/upload")
+    public Result upload(MultipartFile file) {
+        if (!file.isEmpty()) {
+            String uploadImg = UploadUtil.uploadImg(file);
+            if (StrUtil.isEmpty(uploadImg)) {
+                return Result.fail("图片上传失败");
+            }
+            return Result.succ(Constants.IMG_PATH + uploadImg);
+        }
+        return Result.fail("图片上传失败！");
     }
 }

@@ -1,12 +1,16 @@
 package com.gdesign.fisheyemoviesys.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.gdesign.fisheyemoviesys.entity.UserDO;
 import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
+import com.gdesign.fisheyemoviesys.entity.dto.Result;
 import com.gdesign.fisheyemoviesys.entity.dto.UserDTO;
 import com.gdesign.fisheyemoviesys.entity.param.UserQuery;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.security.Principal;
 import java.util.List;
 
 /**
@@ -54,5 +58,25 @@ public interface UserService extends IService<UserDO> {
      * @return删除成功与否
      */
     ResponseMessageDTO<String> deleteUser(Long[] ids);
+
+    /**
+     * 修改用户头像
+     *
+     * @param file
+     * @param userJson
+     * @return
+     */
+    Result updateImage(MultipartFile file, String userJson) throws JsonProcessingException;
+
+    /**
+     * 修改用户密码
+     *
+     * @param oldPassword
+     * @param newPassword
+     * @param confirmPassword
+     * @param principal
+     * @return
+     */
+    Result updatePassword(String oldPassword, String newPassword, String confirmPassword, Principal principal);
 
 }
