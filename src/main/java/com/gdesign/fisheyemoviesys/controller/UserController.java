@@ -3,12 +3,14 @@ package com.gdesign.fisheyemoviesys.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.gdesign.fisheyemoviesys.annotation.Log;
+import com.gdesign.fisheyemoviesys.config.SecurityConfig;
 import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.Result;
 import com.gdesign.fisheyemoviesys.entity.dto.UserDTO;
 import com.gdesign.fisheyemoviesys.entity.param.UserQuery;
 import com.gdesign.fisheyemoviesys.service.UserService;
+import com.gdesign.fisheyemoviesys.utils.JwtUtil;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +24,7 @@ import java.security.Principal;
 @RestController
 @RequestMapping("/user")
 public class UserController {
+
     @Resource
     private UserService userService;
 
@@ -61,5 +64,10 @@ public class UserController {
     @Log(title = "用户管理", businessType = "用户修改密码")
     public Result updatePassword(String oldPassword, String newPassword, String confirmPassword, Principal principal) {
         return userService.updatePassword(oldPassword, newPassword, confirmPassword, principal);
+    }
+
+    @PostMapping("/register")
+    public Result registerUser(@RequestBody UserDTO userDTO){
+        return userService.registerUser(userDTO);
     }
 }

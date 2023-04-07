@@ -16,7 +16,11 @@ public class CorsConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
+        //addAllowedOrigin(String origin)方法可以追加访问源地址
+        //如果不使用"*"（允许全部访问源），则可以配置多条访问源来做控制
+        //addAllowedOrigin是追加访问源地址，而setAllowedOrigins是可以直接设置多条访问源
         config.addAllowedOrigin(Constants.ADMIN_WEB);
+        config.addAllowedOrigin(Constants.USER_WEB);
         config.setAllowCredentials(false);
         config.addAllowedMethod("*");
         config.addAllowedHeader("*");

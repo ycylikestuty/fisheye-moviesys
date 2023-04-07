@@ -18,6 +18,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import javax.annotation.Resource;
 
+/**
+ * @author ycy
+ */
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
@@ -55,9 +58,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private static final String[] URL_WHITELIST = {
             "/login",
-            "/register",
+            "/user/register",
             "/captcha",
-            "/register/deptList",
             "/favicon.ico",
     };
 
@@ -88,7 +90,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         "/**/*.html",
                         "/**/*.css",
                         "/**/*.js",
-                        "/img/**"
+                        "/img/**",
+                        "/poster/**"
                 ).permitAll()
                 .antMatchers("/swagger-ui.html").anonymous()
                 .antMatchers("/swagger-resources/**").anonymous()

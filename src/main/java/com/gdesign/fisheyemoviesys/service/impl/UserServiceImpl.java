@@ -20,6 +20,7 @@ import com.gdesign.fisheyemoviesys.entity.dto.Result;
 import com.gdesign.fisheyemoviesys.entity.dto.UserDTO;
 import com.gdesign.fisheyemoviesys.entity.enums.CodeEnum;
 import com.gdesign.fisheyemoviesys.entity.enums.DeleteEnum;
+import com.gdesign.fisheyemoviesys.entity.enums.ErrorCodeEnum;
 import com.gdesign.fisheyemoviesys.entity.param.UserQuery;
 import com.gdesign.fisheyemoviesys.mapper.UserMapper;
 import com.gdesign.fisheyemoviesys.service.MenuService;
@@ -41,6 +42,7 @@ import java.security.Principal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -60,9 +62,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 
     @Resource
     private UserRoleService userRoleService;
-
-//    @Resource
-//    private BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @Override
     public ResponseMessageDTO<UserDTO> getUserByUserName(String username) {
@@ -231,25 +230,55 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     @Override
     public Result updatePassword(String oldPassword, String newPassword, String confirmPassword, Principal principal) {
         BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
-        if (!newPassword.equals(confirmPassword)){
+        if (!newPassword.equals(confirmPassword)) {
             return Result.fail("两次输入的密码不一致！");
         }
-        LambdaQueryWrapper<UserDO> queryWrapper=new LambdaQueryWrapper<UserDO>()
-                .eq(UserDO::getUsername,principal.getName())
-                .eq(UserDO::getDeleted,DeleteEnum.NO_DELETE.getCode());
-        UserDO userDO=this.getOne(queryWrapper);
-        if(!bCryptPasswordEncoder.matches(oldPassword,userDO.getPassword())){
+        LambdaQueryWrapper<UserDO> queryWrapper = new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getUsername, principal.getName())
+                .eq(UserDO::getDeleted, DeleteEnum.NO_DELETE.getCode());
+        UserDO userDO = this.getOne(queryWrapper);
+        if (!bCryptPasswordEncoder.matches(oldPassword, userDO.getPassword())) {
             return Result.fail("旧密码错误！");
         }
         //更新密码
-        LambdaUpdateWrapper<UserDO> updateWrapper=new LambdaUpdateWrapper<UserDO>()
-                .set(UserDO::getPassword,bCryptPasswordEncoder.encode(confirmPassword))
-                .eq(UserDO::getUsername,principal.getName());
-        UserDO newUserDO=new UserDO();
-        if(this.update(newUserDO,updateWrapper)){
+        LambdaUpdateWrapper<UserDO> updateWrapper = new LambdaUpdateWrapper<UserDO>()
+                .set(UserDO::getPassword, bCryptPasswordEncoder.encode(confirmPassword))
+                .eq(UserDO::getUsername, principal.getName());
+        UserDO newUserDO = new UserDO();
+        if (this.update(newUserDO, updateWrapper)) {
             return Result.succ("密码修改成功！");
-        }else {
+        } else {
             return Result.succ("密码修改失败！");
         }
+    }
+
+    @Override
+    public Result registerUser(UserDTO userDTO) {
+        //验证用户账号是否唯一
+        LambdaQueryWrapper<UserDO> queryWrapper=new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getUsername,userDTO.getUsername())
+                .eq(UserDO::getDeleted,DeleteEnum.NO_DELETE.getCode());
+        UserDO queryUser=this.getOne(queryWrapper);
+        if(null!=queryUser){
+            return Result.fail("该用户账号已经存在，请重新输入");
+        }
+        //新增user表
+        BCryptPasswordEncoder bCryptPasswordEncoder=new BCryptPasswordEncoder();
+        UserDO userDO = new UserDO();
+        BeanUtils.copyProperties(userDTO, userDO);
+        userDO.setImg("https://img1.doubanio.com/view/group_topic/l/public/p560183288.webp");
+        userDO.setPassword(bCryptPasswordEncoder.encode(userDTO.getPassword()));
+        //新增user_role表,角色固定为普通用户
+        UserRoleDO userRoleDO=new UserRoleDO();
+        userRoleDO.setRoleId(Constants.ORDINARY_NUM);
+        //后面可能会新增user_label表
+        if (this.save(userDO)) {
+            userRoleDO.setUserId(userDO.getId());
+            if(userRoleService.save(userRoleDO)){
+                return Result.succ("注册成功");
+            }
+            return Result.fail("注册失败");
+        }
+        return Result.fail("注册失败");
     }
 }

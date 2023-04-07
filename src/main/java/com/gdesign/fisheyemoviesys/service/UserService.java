@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author ycy
@@ -79,4 +80,10 @@ public interface UserService extends IService<UserDO> {
      */
     Result updatePassword(String oldPassword, String newPassword, String confirmPassword, Principal principal);
 
+    /**
+     * 注册用户
+     * @param userDTO 用户信息
+     * @return 注册成功与否
+     */
+    Result registerUser(UserDTO userDTO);
 }

@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.util.List;
 
 /**
  * @author ycy
@@ -45,6 +46,21 @@ public class MovieController {
     @PreAuthorize("hasAnyAuthority('movie:add')")
     public ResponseMessageDTO<String> add(@RequestBody MovieDTO movieDTO) {
         return movieService.addMovie(movieDTO);
+    }
+
+    @GetMapping(path = "/getHighScoreMovies")
+    public ResponseMessageDTO<List<MovieDTO>> getHighScoreMovies() {
+        return movieService.getHighScoreMovies();
+    }
+
+    @PostMapping(path = "/getMovie")
+    public ResponseMessageDTO<MovieDTO> getMovieById(@RequestParam Long Id) {
+        return movieService.getMovieById(Id);
+    }
+
+    @PostMapping(path = "/updateMovieScore")
+    public ResponseMessageDTO<Boolean> updateMovieScore(@RequestBody MovieDTO movieDTO) {
+        return movieService.updateMovieScore(movieDTO);
     }
 
 }

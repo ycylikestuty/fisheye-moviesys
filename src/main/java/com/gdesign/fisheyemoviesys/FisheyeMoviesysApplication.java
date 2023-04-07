@@ -8,8 +8,7 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 /**
  * @author ycy
  */
-@SpringBootApplication
-//@SpringBootApplication(exclude = { SecurityAutoConfiguration.class })
+@SpringBootApplication(exclude = { SecurityAutoConfiguration.class })
 
 @MapperScan("com.gdesign.fisheyemoviesys.mapper")
 public class FisheyeMoviesysApplication {

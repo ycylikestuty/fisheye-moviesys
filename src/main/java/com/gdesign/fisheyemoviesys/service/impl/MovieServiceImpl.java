@@ -10,21 +10,22 @@ import com.gdesign.fisheyemoviesys.constants.Constants;
 import com.gdesign.fisheyemoviesys.entity.MovieDO;
 import com.gdesign.fisheyemoviesys.entity.MovieTypeDO;
 import com.gdesign.fisheyemoviesys.entity.TypeDO;
+import com.gdesign.fisheyemoviesys.entity.UserDO;
 import com.gdesign.fisheyemoviesys.entity.dto.MovieDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.TypeDTO;
 import com.gdesign.fisheyemoviesys.entity.enums.CodeEnum;
+import com.gdesign.fisheyemoviesys.entity.enums.CollectKindEnum;
 import com.gdesign.fisheyemoviesys.entity.enums.DeleteEnum;
 import com.gdesign.fisheyemoviesys.entity.param.MovieQuery;
 import com.gdesign.fisheyemoviesys.mapper.MovieMapper;
-import com.gdesign.fisheyemoviesys.service.MovieService;
-import com.gdesign.fisheyemoviesys.service.MovieTypeService;
-import com.gdesign.fisheyemoviesys.service.TypeService;
+import com.gdesign.fisheyemoviesys.service.*;
 import com.gdesign.fisheyemoviesys.utils.ConversionUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -45,6 +46,12 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, MovieDO> implemen
 
     @Resource
     private MovieTypeService movieTypeService;
+
+    @Resource
+    private UserCollectService userCollectService;
+
+    @Resource
+    private UserService userService;
 
     /**
      * 分页条件查询
@@ -253,5 +260,51 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, MovieDO> implemen
                 .like(StringUtils.isNotBlank(movieName), MovieDO::getName, movieName);
         List<Long> idList = this.list(wrapper).stream().map(MovieDO::getId).collect(Collectors.toList());
         return ResponseMessageDTO.success(idList);
+    }
+
+    @Override
+    public ResponseMessageDTO<List<MovieDTO>> getHighScoreMovies() {
+        LambdaQueryWrapper<MovieDO> queryWrapper = new LambdaQueryWrapper<MovieDO>()
+                .eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
+                .orderByDesc(MovieDO::getScore)
+                .last("limit 10");
+        List<MovieDTO> movieDTOList = ConversionUtils.transformList(this.list(queryWrapper), MovieDTO.class);
+        return ResponseMessageDTO.success(movieDTOList);
+    }
+
+    @Override
+    public ResponseMessageDTO<MovieDTO> getMovieById(Long Id) {
+        LambdaQueryWrapper<MovieDO> movieDOLambdaQueryWrapper = new LambdaQueryWrapper<MovieDO>()
+                .eq(MovieDO::getId, Id)
+                .eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode());
+        MovieDO movieDO = this.getOne(movieDOLambdaQueryWrapper);
+        MovieDTO movieDTO = new MovieDTO();
+        BeanUtils.copyProperties(movieDO, movieDTO);
+        //设置电影类型、当前用户是否收藏
+        movieDTO.setType(typeService.getTypeById(movieDTO.getId()).getResult().stream().map(TypeDTO::getName).collect(Collectors.toList()));
+        //获得当前登录用户的用户名根据用户名获取用户id
+        String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        LambdaQueryWrapper<UserDO> userQueryWrapper = new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getUsername, username);
+        UserDO userDO = userService.getOne(userQueryWrapper);
+        movieDTO.setFlagCollect(userCollectService.getCollectByUserId(userDO.getId(),movieDTO.getId(), CollectKindEnum.MOVIE.getCode()));
+        return ResponseMessageDTO.success(movieDTO);
+    }
+
+    @Override
+    public ResponseMessageDTO<Boolean> updateMovieScore(MovieDTO movieDTO) {
+        LambdaQueryWrapper<MovieDO> queryWrapper=new LambdaQueryWrapper<MovieDO>()
+                .eq(MovieDO::getId,movieDTO.getId())
+                .eq(MovieDO::getDeleted,DeleteEnum.NO_DELETE.getCode());
+        MovieDO movieDO=this.getOne(queryWrapper);
+        Double newScore=(movieDTO.getScore()+movieDO.getScore())/2;
+        LambdaUpdateWrapper<MovieDO> updateWrapper=new LambdaUpdateWrapper<MovieDO>()
+                .eq(MovieDO::getId,movieDTO.getId())
+                .set(MovieDO::getScore,newScore);
+
+        if(this.update(movieDO,updateWrapper)){
+            return ResponseMessageDTO.success(true);
+        }
+        return ResponseMessageDTO.success(false);
     }
 }

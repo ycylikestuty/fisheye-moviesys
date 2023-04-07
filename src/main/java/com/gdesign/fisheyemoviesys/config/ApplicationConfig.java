@@ -15,5 +15,6 @@ public class ApplicationConfig implements WebMvcConfigurer {
         //就将其映射到本地的addResourceLocations的这个路径上
         //即将图片的URL映射至服务器的本地文件夹
         registry.addResourceHandler("/img/**").addResourceLocations("file:E:/upload/");
+        registry.addResourceHandler("/poster/**").addResourceLocations("file:E:/poster/");
     }
 }

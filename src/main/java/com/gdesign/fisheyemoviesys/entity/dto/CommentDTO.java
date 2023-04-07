@@ -26,6 +26,16 @@ public class CommentDTO extends BaseInfoDTO implements Serializable {
     private String userName;
 
     /**
+     * 用户头像
+     */
+    private String userImg;
+
+    /**
+     * 用户昵称
+     */
+    private String userNickName;
+
+    /**
      * 电影名
      */
     private String movieName;
@@ -39,6 +49,16 @@ public class CommentDTO extends BaseInfoDTO implements Serializable {
      * 点赞数
      */
     private Long star;
+
+    /**
+     * 当前登录用户是否点赞
+     */
+    private Boolean flagStar;
+
+    /**
+     * 当前登录用户是否收藏
+     */
+    private Boolean flagCollect;
 
     /**
      * 收藏数

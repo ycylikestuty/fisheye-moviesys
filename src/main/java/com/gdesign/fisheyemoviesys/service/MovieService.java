@@ -61,4 +61,24 @@ public interface MovieService extends IService<MovieDO> {
      * @return 电影id集
      */
     ResponseMessageDTO<List<Long>> getMovieIdByMovieName(String movieName);
+
+    /**
+     * 获取高分的十个电影
+     * @return
+     */
+    ResponseMessageDTO<List<MovieDTO>> getHighScoreMovies();
+
+    /**
+     * 根据id查询电影
+     * @param Id
+     * @return 电影
+     */
+    ResponseMessageDTO<MovieDTO> getMovieById(Long Id);
+
+    /**
+     * 更新电影的评分
+     * @param movieDTO 电影
+     * @return 更新成功
+     */
+    ResponseMessageDTO<Boolean> updateMovieScore(MovieDTO movieDTO);
 }

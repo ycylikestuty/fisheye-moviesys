@@ -7,32 +7,29 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gdesign.fisheyemoviesys.constants.Constants;
-import com.gdesign.fisheyemoviesys.entity.CommentDO;
-import com.gdesign.fisheyemoviesys.entity.RoleDO;
-import com.gdesign.fisheyemoviesys.entity.UserDO;
+import com.gdesign.fisheyemoviesys.entity.*;
 import com.gdesign.fisheyemoviesys.entity.dto.CommentDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
-import com.gdesign.fisheyemoviesys.entity.enums.CodeEnum;
-import com.gdesign.fisheyemoviesys.entity.enums.CommentStatusEnum;
-import com.gdesign.fisheyemoviesys.entity.enums.DeleteEnum;
-import com.gdesign.fisheyemoviesys.entity.enums.RoleEnum;
+import com.gdesign.fisheyemoviesys.entity.enums.*;
 import com.gdesign.fisheyemoviesys.entity.param.CommentQuery;
+import com.gdesign.fisheyemoviesys.entity.param.SpecialCommentQuery;
+import com.gdesign.fisheyemoviesys.entity.param.UserCollectParam;
+import com.gdesign.fisheyemoviesys.entity.param.UserStarParam;
 import com.gdesign.fisheyemoviesys.mapper.CommentMapper;
-import com.gdesign.fisheyemoviesys.service.CommentService;
-import com.gdesign.fisheyemoviesys.service.MovieService;
-import com.gdesign.fisheyemoviesys.service.RoleService;
-import com.gdesign.fisheyemoviesys.service.UserService;
+import com.gdesign.fisheyemoviesys.service.*;
 import com.gdesign.fisheyemoviesys.utils.ConversionUtils;
+import com.gdesign.fisheyemoviesys.utils.SensitiveWordInit;
+import com.gdesign.fisheyemoviesys.utils.SensitiveWordUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author ycy
@@ -48,6 +45,15 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, CommentDO> im
 
     @Resource
     private RoleService roleService;
+
+    @Resource
+    private UserStarService userStarService;
+
+    @Resource
+    private UserCollectService userCollectService;
+
+    @Resource
+    private SensitiveWordService sensitiveService;
 
     /**
      * 分页条件查询评论
@@ -171,5 +177,297 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, CommentDO> im
             return ResponseMessageDTO.success("删除成功");
         }
         return ResponseMessageDTO.success("删除失败");
+    }
+
+    @Override
+    public ResponseMessageDTO<CommentDTO> getRefinementCommentsByMovieId(Long movieId) {
+        //根据电影id查询出唯一的加精影评
+        LambdaQueryWrapper<CommentDO> queryWrapper = new LambdaQueryWrapper<CommentDO>()
+                .eq(CommentDO::getMovieId, movieId)
+                .eq(CommentDO::getStatus, CommentStatusEnum.REFINEMENT.getCode());
+        CommentDO commentDO = this.getOne(queryWrapper);
+        CommentDTO commentDTO = new CommentDTO();
+        BeanUtils.copyProperties(commentDO, commentDTO);
+        //获得当前登录用户的用户名,注意不是昵称和id =》根据用户名获取用户id
+        String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        log.info("当前登录的用户名为" + username);
+        LambdaQueryWrapper<UserDO> userQueryWrapper = new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getUsername, username);
+        UserDO userDO = userService.getOne(userQueryWrapper);
+        //设置返回的用户昵称、用户头像、当前用户是否点赞、是否收藏
+        commentDTO.setUserNickName(userService.getById(commentDTO.getId()).getNickname());
+        commentDTO.setUserImg(userService.getById(commentDTO.getId()).getImg());
+        commentDTO.setFlagStar(this.getStarByUserId(userDO.getId(),commentDTO.getId()));
+        commentDTO.setFlagCollect(userCollectService.getCollectByUserId(userDO.getId(),commentDTO.getId(), CollectKindEnum.COMMENT.getCode()));
+        return ResponseMessageDTO.success(commentDTO);
+    }
+
+    @Override
+    public ResponseMessageDTO<PageResultDTO<CommentDTO>> getHotComments(SpecialCommentQuery query) {
+        PageResultDTO<CommentDTO> pageResultDTO = new PageResultDTO<>();
+        try {
+            Page<CommentDO> page = new Page<>();
+            page.setCurrent(query.getPageNum());
+            page.setSize(query.getPageSize());
+            LambdaQueryWrapper<CommentDO> queryWrapper = new LambdaQueryWrapper<>();
+            //查询全部未被删除的评论记录
+            queryWrapper.eq(CommentDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
+                    .eq(CommentDO::getMovieId, query.getMovieId())
+                    .ne(CommentDO::getStatus, CommentStatusEnum.REFINEMENT.getCode())
+                    .orderByDesc(CommentDO::getStar);
+            IPage<CommentDO> commentDOPage = this.page(page, queryWrapper);
+            List<CommentDO> commentDORecords = commentDOPage.getRecords();
+            if (CollectionUtils.isEmpty(commentDORecords)) {
+                return ResponseMessageDTO.success(PageResultDTO
+                        .<CommentDTO>builder()
+                        .page(Long.valueOf(query.getPageNum()))
+                        .pageSize(Long.valueOf(query.getPageSize()))
+                        .rows(Collections.emptyList())
+                        .total(Constants.EMPTY_NUM)
+                        .build());
+            }
+            //获得当前登录用户的用户名,注意不是昵称和id =》根据用户名获取用户id
+            String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            log.info("当前登录的用户名为" + username);
+            LambdaQueryWrapper<UserDO> userQueryWrapper = new LambdaQueryWrapper<UserDO>()
+                    .eq(UserDO::getUsername, username);
+            UserDO userDO = userService.getOne(userQueryWrapper);
+            List<CommentDTO> commentDTOList = ConversionUtils.transformList(commentDORecords, CommentDTO.class);
+            //设置返回的用户昵称、用户头像、当前用户是否点赞、是否收藏
+            commentDTOList.forEach(
+                    item -> {
+                        item.setUserImg(userService.getById(item.getUserId()).getImg());
+                        item.setUserNickName(userService.getById(item.getUserId()).getNickname());
+                        item.setFlagStar(this.getStarByUserId(userDO.getId(),item.getId()));
+                        item.setFlagCollect(userCollectService.getCollectByUserId(userDO.getId(),item.getId(), CollectKindEnum.COMMENT.getCode()));
+                    }
+            );
+            pageResultDTO.setRows(commentDTOList);
+            pageResultDTO.setTotal(commentDOPage.getTotal());
+            pageResultDTO.setPageSize(commentDOPage.getSize());
+            pageResultDTO.setPage(commentDOPage.getCurrent());
+            pageResultDTO.setTotalPage(commentDOPage.getPages());
+        } catch (Exception e) {
+            return ResponseMessageDTO
+                    .<PageResultDTO<CommentDTO>>builder()
+                    .code(CodeEnum.QUERY_ERROR.getCode())
+                    .message("评论分页异常")
+                    .success(Boolean.FALSE)
+                    .build();
+        }
+        return ResponseMessageDTO.success(pageResultDTO);
+    }
+
+    @Override
+    public ResponseMessageDTO<PageResultDTO<CommentDTO>> getLastComments(SpecialCommentQuery query) {
+        PageResultDTO<CommentDTO> pageResultDTO = new PageResultDTO<>();
+        try {
+            Page<CommentDO> page = new Page<>();
+            page.setCurrent(query.getPageNum());
+            page.setSize(query.getPageSize());
+            LambdaQueryWrapper<CommentDO> queryWrapper = new LambdaQueryWrapper<>();
+            //查询全部未被删除的评论记录
+            queryWrapper.eq(CommentDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
+                    .eq(CommentDO::getMovieId, query.getMovieId())
+                    .ne(CommentDO::getStatus, CommentStatusEnum.REFINEMENT.getCode())
+                    .orderByDesc(CommentDO::getCreateTime);
+            IPage<CommentDO> commentDOPage = this.page(page, queryWrapper);
+            List<CommentDO> commentDORecords = commentDOPage.getRecords();
+            if (CollectionUtils.isEmpty(commentDORecords)) {
+                return ResponseMessageDTO.success(PageResultDTO
+                        .<CommentDTO>builder()
+                        .page(Long.valueOf(query.getPageNum()))
+                        .pageSize(Long.valueOf(query.getPageSize()))
+                        .rows(Collections.emptyList())
+                        .total(Constants.EMPTY_NUM)
+                        .build());
+            }
+            //获得当前登录用户的用户名,注意不是昵称和id =》根据用户名获取用户id
+            String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            log.info("当前登录的用户名为" + username);
+            LambdaQueryWrapper<UserDO> userQueryWrapper = new LambdaQueryWrapper<UserDO>()
+                    .eq(UserDO::getUsername, username);
+            UserDO userDO = userService.getOne(userQueryWrapper);
+            List<CommentDTO> commentDTOList = ConversionUtils.transformList(commentDORecords, CommentDTO.class);
+            //设置返回的用户昵称、用户头像、当前用户是否点赞、是否收藏
+            commentDTOList.forEach(
+                    item -> {
+                        item.setUserImg(userService.getById(item.getUserId()).getImg());
+                        item.setUserNickName(userService.getById(item.getUserId()).getNickname());
+                        item.setFlagStar(this.getStarByUserId(userDO.getId(),item.getId()));
+                        item.setFlagCollect(userCollectService.getCollectByUserId(userDO.getId(),item.getId(), CollectKindEnum.COMMENT.getCode()));
+                    }
+            );
+            pageResultDTO.setRows(commentDTOList);
+            pageResultDTO.setTotal(commentDOPage.getTotal());
+            pageResultDTO.setPageSize(commentDOPage.getSize());
+            pageResultDTO.setPage(commentDOPage.getCurrent());
+            pageResultDTO.setTotalPage(commentDOPage.getPages());
+        } catch (Exception e) {
+            return ResponseMessageDTO
+                    .<PageResultDTO<CommentDTO>>builder()
+                    .code(CodeEnum.QUERY_ERROR.getCode())
+                    .message("评论分页异常")
+                    .success(Boolean.FALSE)
+                    .build();
+        }
+        return ResponseMessageDTO.success(pageResultDTO);
+    }
+
+    @Override
+    public Boolean getStarByUserId(Long userId, Long commentId) {
+        LambdaQueryWrapper<UserStarDO> queryWrapper = new LambdaQueryWrapper<UserStarDO>()
+                .eq(UserStarDO::getUserId, userId);
+        UserStarDO userStarDO = userStarService.getOne(queryWrapper);
+        String commentIds = userStarDO.getCommentIds();
+        if (commentIds.contains(String.valueOf(commentId)) == true) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public ResponseMessageDTO<Boolean> updateStar(UserStarParam userStarParam) {
+        //根据用户id查询出原来的点赞字符串
+        LambdaQueryWrapper<UserStarDO> userStarDOLambdaQueryWrapper = new LambdaQueryWrapper<UserStarDO>()
+                .eq(UserStarDO::getUserId, userStarParam.getUserId());
+        //根据评论id查询出原来的点赞数
+        LambdaQueryWrapper<CommentDO> commentDOLambdaQueryWrapper=new LambdaQueryWrapper<CommentDO>()
+                .eq(CommentDO::getId,userStarParam.getCommentId());
+        UserStarDO userStarDO = userStarService.getOne(userStarDOLambdaQueryWrapper);
+        CommentDO commentDO=this.getOne(commentDOLambdaQueryWrapper);
+        String newCommentIds = userStarDO.getCommentIds();
+        Long newStar=commentDO.getStar();
+        //根据评论id查询是否已经点赞
+        if (this.getStarByUserId(userStarParam.getUserId(), userStarParam.getCommentId())) {//已经点赞则 减字符串 减点赞人数
+            List<String> commentIdsList = new ArrayList<>(Arrays.asList(newCommentIds.split(",")));
+            //使用Arrays.asList（）转化数组为list时生成的ArrayList实际上是Arrays的内部类ArrayList，不是java.util.ArrayList
+            // 这两个ArrayList虽然都是继承 AbstractList，但是Arrays的内部类ArrayList没有重写 AbstractList的add和remove方法
+            // 所以Arrays生成的ArrayList使用add或者remove方法会直接抛出UnsupportedOperationException异常
+            //因此，在使用Arrays.asList（）做转化时，若要进行修改操作，就要再转化一次
+            Iterator iterator = commentIdsList.iterator();
+            while (iterator.hasNext()) {
+                String item = (String) iterator.next();
+                if (item.equals(userStarParam.getCommentId().toString())) {
+                    iterator.remove();
+                }
+            }
+            newCommentIds = commentIdsList.stream().collect(Collectors.joining(","));
+            newStar--;
+        } else {//否则 加字符串 加点赞人数
+            newCommentIds += "," + userStarParam.getCommentId().toString();
+            newStar++;
+        }
+        LambdaUpdateWrapper<UserStarDO> userStarDOLambdaUpdateWrapper = new LambdaUpdateWrapper<UserStarDO>()
+                .eq(UserStarDO::getUserId, userStarParam.getUserId())
+                .set(UserStarDO::getCommentIds, newCommentIds);
+        LambdaUpdateWrapper<CommentDO> commentDOLambdaUpdateWrapper=new LambdaUpdateWrapper<CommentDO>()
+                .eq(CommentDO::getId,userStarParam.getCommentId())
+                .set(CommentDO::getStar,newStar);
+        if (userStarService.update(userStarDOLambdaUpdateWrapper) && this.update(commentDOLambdaUpdateWrapper)) {
+            return ResponseMessageDTO.success(true);
+        }
+        return ResponseMessageDTO.success(false);
+    }
+
+    @Override
+    public ResponseMessageDTO<Boolean> updateCollect(UserCollectParam userCollectParam) {
+        //根据用户id和收藏种类查询出原来的收藏字符串
+        LambdaQueryWrapper<UserCollectDO> userCollectDOLambdaQueryWrapper = new LambdaQueryWrapper<UserCollectDO>()
+                .eq(UserCollectDO::getUserId, userCollectParam.getUserId())
+                .eq(UserCollectDO::getKind,userCollectParam.getKind());
+        UserCollectDO userCollectDO = userCollectService.getOne(userCollectDOLambdaQueryWrapper);
+        String newCollectIds = userCollectDO.getCollectIds();
+        //若种类为评论即2则根据收藏id查询出原来的收藏数
+        LambdaQueryWrapper<CommentDO> commentDOLambdaQueryWrapper=new LambdaQueryWrapper<CommentDO>()
+                .eq(CommentDO::getId,userCollectParam.getCollectId());
+        CommentDO commentDO=this.getOne(commentDOLambdaQueryWrapper);
+        Long newCollect=commentDO.getCollect();
+        //根据收藏id查询是否已经收藏
+        if (userCollectService.getCollectByUserId(userCollectParam.getUserId(), userCollectParam.getCollectId(),userCollectParam.getKind())) {//已经收藏则 减字符串
+            List<String> collectIdsList = new ArrayList<>(Arrays.asList(newCollectIds.split(",")));
+            Iterator iterator = collectIdsList.iterator();
+            while (iterator.hasNext()) {
+                String item = (String) iterator.next();
+                if (item.equals(userCollectParam.getCollectId().toString())) {
+                    iterator.remove();
+                }
+            }
+            newCollectIds = collectIdsList.stream().collect(Collectors.joining(","));
+            if(Objects.equals(userCollectParam.getKind(),CollectKindEnum.COMMENT.getCode())){
+                //若种类为评论即2则更新收藏数
+                newCollect--;
+            }
+        } else {//否则 加字符串
+            newCollectIds += "," + userCollectParam.getCollectId().toString();
+            if(Objects.equals(userCollectParam.getKind(),CollectKindEnum.COMMENT.getCode())){
+                newCollect++;
+            }
+        }
+
+
+        //根据收藏id查询是否已经收藏
+//        if (this.getCollectByUserId(userCollectParam.getUserId(), userCollectParam.getCollectId(),userCollectParam.getKind())) {//已经收藏则 减字符串 减收藏人数
+//            List<String> collectIdsList = new ArrayList<>(Arrays.asList(newCollectIds.split(",")));
+//            Iterator iterator = collectIdsList.iterator();
+//            while (iterator.hasNext()) {
+//                String item = (String) iterator.next();
+//                if (item.equals(userCollectParam.getCollectId().toString())) {
+//                    iterator.remove();
+//                }
+//            }
+//            newCollectIds = collectIdsList.stream().collect(Collectors.joining(","));
+//            newCollect--;
+//        } else {//否则 加字符串 加点赞人数
+//            newCollectIds += "," + userCollectParam.getCollectId().toString();
+//            newCollect++;
+//        }
+        LambdaUpdateWrapper<UserCollectDO> userCollectDOLambdaUpdateWrapper = new LambdaUpdateWrapper<UserCollectDO>()
+                .eq(UserCollectDO::getUserId, userCollectParam.getUserId())
+                .eq(UserCollectDO::getKind,userCollectParam.getKind())
+                .set(UserCollectDO::getCollectIds, newCollectIds);
+        LambdaUpdateWrapper<CommentDO> commentDOLambdaUpdateWrapper=new LambdaUpdateWrapper<CommentDO>()
+                .eq(CommentDO::getId,userCollectParam.getCollectId())
+                .set(CommentDO::getCollect,newCollect);
+        if (userCollectService.update(userCollectDOLambdaUpdateWrapper) && this.update(commentDOLambdaUpdateWrapper)) {
+            return ResponseMessageDTO.success(true);
+        }
+        return ResponseMessageDTO.success(false);
+    }
+
+    @Override
+    public ResponseMessageDTO<Boolean> addComment(CommentDTO commentDTO) {
+        //处理违禁词
+        //1.初始化敏感词库对象
+        SensitiveWordInit sensitiveWordInit = new SensitiveWordInit();
+        //2.从数据库中获取敏感词对象集合
+        List<SensitiveWordDO> sensitiveWords = sensitiveService.list();
+        //3.构建敏感词库
+        Map sensitiveWordMap = sensitiveWordInit.initKeyWord(sensitiveWords);
+        //4.传入SensitivewordEngine类中的敏感词库
+        SensitiveWordUtils.sensitiveWordMap = sensitiveWordMap;
+        String detail=commentDTO.getDetail();
+        //5.得到敏感词有哪些，传入2表示获取所有敏感词
+        Set<String> set = SensitiveWordUtils.getSensitiveWord(detail, 2);
+        String newDetail = SensitiveWordUtils.replaceSensitiveWord(detail, 2, "*");
+        CommentDO commentDO=new CommentDO();
+        BeanUtils.copyProperties(commentDTO,commentDO);
+        commentDO.setDetail(newDetail);
+        if(this.save(commentDO)){
+            return ResponseMessageDTO.success(true);
+        }
+        return ResponseMessageDTO.success(false);
+    }
+
+    @Override
+    public ResponseMessageDTO<Boolean> updateCommentStatusById(Long commentId) {
+        LambdaUpdateWrapper<CommentDO> updateWrapper=new LambdaUpdateWrapper<CommentDO>()
+                .eq(CommentDO::getId,commentId)
+                .set(CommentDO::getStatus,CommentStatusEnum.REPORT.getCode());
+        CommentDO commentDO=new CommentDO();
+        if(this.update(commentDO,updateWrapper)){
+            return ResponseMessageDTO.success(true);
+        }
+        return ResponseMessageDTO.success(false);
     }
 }

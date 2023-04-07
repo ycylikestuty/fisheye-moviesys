@@ -35,7 +35,17 @@ public interface Constants {
     String ADMIN_WEB = "http://localhost:8200";
 
     /**
+     * 用户项目网址
+     */
+    String USER_WEB = "http://localhost:8300";
+
+    /**
      * 头像存储路径
      */
     String IMG_PATH = "http://localhost:8100/img";
+
+    /**
+     * 电影海报存储路径
+     */
+    String POSTER_PATH="http://localhost:8100/poster";
 }

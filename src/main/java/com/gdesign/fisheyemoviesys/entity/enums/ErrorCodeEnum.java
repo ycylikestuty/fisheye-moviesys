@@ -20,7 +20,12 @@ public enum ErrorCodeEnum {
     /**
      * 更新异常
      */
-    UPDATE_ERROR_CODE(10003, "修改异常");
+    UPDATE_ERROR_CODE(10003, "修改异常"),
+
+    /**
+     * 注册异常
+     */
+    REGISTER_ERROR_CODE(10004,"注册异常");
 
 
     private final Integer code;

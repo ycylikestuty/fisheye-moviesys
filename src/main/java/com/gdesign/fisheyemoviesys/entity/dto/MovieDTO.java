@@ -68,4 +68,9 @@ public class MovieDTO extends BaseInfoDTO implements Serializable {
      * 如果要将其改为Long类型 即 类型的主键id，需要在前端的 el-option 控件中的 :value属性 进行修改，将其改为Long类型
      */
     private List<String> type;
+
+    /**
+     * 当前登录用户是否收藏
+     */
+    private Boolean flagCollect;
 }
