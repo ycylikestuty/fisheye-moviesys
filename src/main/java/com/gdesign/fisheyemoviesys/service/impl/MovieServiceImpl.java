@@ -1,38 +1,34 @@
 package com.gdesign.fisheyemoviesys.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gdesign.fisheyemoviesys.constants.Constants;
-import com.gdesign.fisheyemoviesys.entity.MovieDO;
-import com.gdesign.fisheyemoviesys.entity.MovieTypeDO;
-import com.gdesign.fisheyemoviesys.entity.TypeDO;
-import com.gdesign.fisheyemoviesys.entity.UserDO;
-import com.gdesign.fisheyemoviesys.entity.dto.MovieDTO;
-import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
-import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
-import com.gdesign.fisheyemoviesys.entity.dto.TypeDTO;
-import com.gdesign.fisheyemoviesys.entity.enums.CodeEnum;
-import com.gdesign.fisheyemoviesys.entity.enums.CollectKindEnum;
-import com.gdesign.fisheyemoviesys.entity.enums.DeleteEnum;
+import com.gdesign.fisheyemoviesys.entity.*;
+import com.gdesign.fisheyemoviesys.entity.dto.*;
+import com.gdesign.fisheyemoviesys.entity.enums.*;
 import com.gdesign.fisheyemoviesys.entity.param.MovieQuery;
+import com.gdesign.fisheyemoviesys.entity.param.SpecialMovieQuery;
+import com.gdesign.fisheyemoviesys.entity.param.UserCollectQuery;
 import com.gdesign.fisheyemoviesys.mapper.MovieMapper;
 import com.gdesign.fisheyemoviesys.service.*;
 import com.gdesign.fisheyemoviesys.utils.ConversionUtils;
+import com.gdesign.fisheyemoviesys.utils.UploadUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -180,6 +176,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, MovieDO> implemen
 
     @Override
     public ResponseMessageDTO<String> updateMovie(MovieDTO movieDTO) {
+        log.info(movieDTO.getImg());
         LambdaUpdateWrapper<MovieDO> movieUpdateWrapper = new LambdaUpdateWrapper<MovieDO>()
                 .eq(MovieDO::getId, movieDTO.getId())
                 .eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
@@ -189,6 +186,8 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, MovieDO> implemen
                 .set(MovieDO::getSynopsis, movieDTO.getSynopsis())
                 .set(MovieDO::getYear, movieDTO.getYear())
                 .set(MovieDO::getDuration, movieDTO.getDuration())
+                //海报的url不包括Constants.POSTER_PATH时，更新海报url，否则不更新
+                .set(movieDTO.getImg().contains(Constants.POSTER_PATH)==false,MovieDO::getImg, Constants.POSTER_PATH + movieDTO.getImg())
                 .set(MovieDO::getArea, movieDTO.getArea());
         MovieDO movieDO = new MovieDO();
         //修改type
@@ -217,6 +216,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, MovieDO> implemen
     public ResponseMessageDTO<String> addMovie(MovieDTO movieDTO) {
         MovieDO movieDO = new MovieDO();
         BeanUtils.copyProperties(movieDTO, movieDO);
+        movieDO.setImg(Constants.POSTER_PATH+movieDTO.getImg());
         //新增movie_type
         /**
          //根据类型名获取类型id
@@ -287,24 +287,209 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, MovieDO> implemen
         LambdaQueryWrapper<UserDO> userQueryWrapper = new LambdaQueryWrapper<UserDO>()
                 .eq(UserDO::getUsername, username);
         UserDO userDO = userService.getOne(userQueryWrapper);
-        movieDTO.setFlagCollect(userCollectService.getCollectByUserId(userDO.getId(),movieDTO.getId(), CollectKindEnum.MOVIE.getCode()));
+        movieDTO.setFlagCollect(userCollectService.getCollectByUserId(userDO.getId(), movieDTO.getId(), CollectKindEnum.MOVIE.getCode()));
         return ResponseMessageDTO.success(movieDTO);
     }
 
     @Override
     public ResponseMessageDTO<Boolean> updateMovieScore(MovieDTO movieDTO) {
-        LambdaQueryWrapper<MovieDO> queryWrapper=new LambdaQueryWrapper<MovieDO>()
-                .eq(MovieDO::getId,movieDTO.getId())
-                .eq(MovieDO::getDeleted,DeleteEnum.NO_DELETE.getCode());
-        MovieDO movieDO=this.getOne(queryWrapper);
-        Double newScore=(movieDTO.getScore()+movieDO.getScore())/2;
-        LambdaUpdateWrapper<MovieDO> updateWrapper=new LambdaUpdateWrapper<MovieDO>()
-                .eq(MovieDO::getId,movieDTO.getId())
-                .set(MovieDO::getScore,newScore);
+        LambdaQueryWrapper<MovieDO> queryWrapper = new LambdaQueryWrapper<MovieDO>()
+                .eq(MovieDO::getId, movieDTO.getId())
+                .eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode());
+        MovieDO movieDO = this.getOne(queryWrapper);
+        Double newScore = (movieDTO.getScore() + movieDO.getScore()) / 2;
+        LambdaUpdateWrapper<MovieDO> updateWrapper = new LambdaUpdateWrapper<MovieDO>()
+                .eq(MovieDO::getId, movieDTO.getId())
+                .set(MovieDO::getScore, newScore);
 
-        if(this.update(movieDO,updateWrapper)){
+        if (this.update(movieDO, updateWrapper)) {
             return ResponseMessageDTO.success(true);
         }
         return ResponseMessageDTO.success(false);
     }
+
+    @Override
+    public ResponseMessageDTO<PageResultDTO<MovieDTO>> getCollectMovies(UserCollectQuery query) {
+        PageResultDTO<MovieDTO> pageResultDTO = new PageResultDTO<>();
+        try {
+            Page<MovieDO> page = new Page<>();
+            page.setCurrent(query.getPageNum());
+            page.setSize(query.getPageSize());
+            LambdaQueryWrapper<MovieDO> queryWrapper = new LambdaQueryWrapper<>();
+
+            //根据用户id和kind查询收藏字符串
+            LambdaQueryWrapper<UserCollectDO> userCollectDOLambdaQueryWrapper = new LambdaQueryWrapper<UserCollectDO>()
+                    .eq(UserCollectDO::getUserId, query.getUserId())
+                    .eq(UserCollectDO::getKind, query.getKind());
+            UserCollectDO userCollectDO=userCollectService.getOne(userCollectDOLambdaQueryWrapper);
+            if(Objects.isNull(userCollectDO)){
+                return ResponseMessageDTO.success(PageResultDTO
+                        .<MovieDTO>builder()
+                        .page(Long.valueOf(query.getPageNum()))
+                        .pageSize(Long.valueOf(query.getPageSize()))
+                        .rows(Collections.emptyList())
+                        .total(Constants.EMPTY_NUM)
+                        .build());
+            }
+            String collectIds = userCollectDO.getCollectIds();
+            //将sting类型的字符串转化为List<Long>类型即3,6,8=》[3,6,8]
+            List<Long> collectId = Arrays.asList(collectIds.split(",")).stream().map(Long::valueOf).collect(Collectors.toList());
+            //查询全部未被删除的评论记录
+            queryWrapper.eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
+                    .in(MovieDO::getId, collectId)
+                    .orderByDesc(MovieDO::getCreateTime);
+            IPage<MovieDO> movieDOPage = this.page(page, queryWrapper);
+            List<MovieDO> movieDORecords = movieDOPage.getRecords();
+            if (CollectionUtils.isEmpty(movieDORecords)) {
+                return ResponseMessageDTO.success(PageResultDTO
+                        .<MovieDTO>builder()
+                        .page(Long.valueOf(query.getPageNum()))
+                        .pageSize(Long.valueOf(query.getPageSize()))
+                        .rows(Collections.emptyList())
+                        .total(Constants.EMPTY_NUM)
+                        .build());
+            }
+            List<MovieDTO> movieDTOList = ConversionUtils.transformList(movieDORecords, MovieDTO.class);
+            pageResultDTO.setRows(movieDTOList);
+            pageResultDTO.setTotal(movieDOPage.getTotal());
+            pageResultDTO.setPageSize(movieDOPage.getSize());
+            pageResultDTO.setPage(movieDOPage.getCurrent());
+            pageResultDTO.setTotalPage(movieDOPage.getPages());
+        } catch (Exception e) {
+            return ResponseMessageDTO
+                    .<PageResultDTO<MovieDTO>>builder()
+                    .code(CodeEnum.QUERY_ERROR.getCode())
+                    .message("评论分页异常")
+                    .success(Boolean.FALSE)
+                    .build();
+        }
+        return ResponseMessageDTO.success(pageResultDTO);
+    }
+
+    @Override
+    public ResponseMessageDTO<List<MovieDTO>> getMoviesByName(String movieName) {
+        LambdaQueryWrapper<MovieDO> queryWrapper = new LambdaQueryWrapper<MovieDO>()
+                .like(MovieDO::getName, movieName)
+                .eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode());
+        List<MovieDTO> movieDTOList = ConversionUtils.transformList(this.list(queryWrapper), MovieDTO.class);
+        return ResponseMessageDTO.success(movieDTOList);
+    }
+
+    @Override
+    public ResponseMessageDTO<List<String>> getAllMovieYear() {
+        LambdaQueryWrapper<MovieDO> queryWrapper = new LambdaQueryWrapper<MovieDO>()
+                .eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
+                .orderByDesc(MovieDO::getYear);
+        List<String> yearsList = this.list(queryWrapper).stream().map(MovieDO::getYear).distinct().collect(Collectors.toList());
+        //使用distinct去掉重复的年份
+        return ResponseMessageDTO.success(yearsList);
+    }
+
+    @Override
+    public ResponseMessageDTO<List<String>> getAllMovieArea() {
+        List<String> areaList = new ArrayList<>();
+        for (AreaEnum item : AreaEnum.values()) {
+            areaList.add(item.getArea());
+        }
+        return ResponseMessageDTO.success(areaList);
+    }
+
+    @Override
+    public ResponseMessageDTO<PageResultDTO<MovieDTO>> getAllMovieByTypeAreaYear(SpecialMovieQuery query) {
+        PageResultDTO<MovieDTO> pageResultDTO = new PageResultDTO<>();
+        try {
+            Page<MovieDO> page = new Page<>();
+            page.setCurrent(query.getPageNum());
+            page.setSize(query.getPageSize());
+            //处理前端传过来的字符串类型、地区
+            Integer area = -1;
+            for (AreaEnum item : AreaEnum.values()) {
+                if (item.getArea().equals(query.getArea())) {
+                    area = item.getCode();
+                }
+            }
+            String type = query.getType();
+            LambdaQueryWrapper<MovieDO> movieDOLambdaQueryWrapper = new LambdaQueryWrapper<>();
+            //type为全部，查询全部未被删除的电影记录，可以省略不写if条件
+            movieDOLambdaQueryWrapper.eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
+                    .eq(Constants.MOVIE_ALL.equals(query.getYear()) == false, MovieDO::getYear, query.getYear())
+                    .eq(area != -1, MovieDO::getArea, area)
+                    .orderByDesc(MovieDO::getScore);
+            //type不为全部
+            if(type.equals(Constants.MOVIE_ALL)==false){//根据type的name字段查询出type_id
+                LambdaQueryWrapper<TypeDO> typeDOLambdaQueryWrapper = new LambdaQueryWrapper<TypeDO>()
+                        .eq(TypeDO::getName, type);
+                String typeId = typeService.getOne(typeDOLambdaQueryWrapper).getId().toString();
+                //从movie_type表中找出type_id包含typeId的movieId
+                LambdaQueryWrapper<MovieDO> movieQueryWrapper = new LambdaQueryWrapper<MovieDO>()
+                        .inSql(MovieDO::getId, "SELECT movie_id FROM movie_type WHERE type_id REGEXP ('" + typeId + "')");
+                List<Long> movieIds = this.list(movieQueryWrapper).stream().map(MovieDO::getId).collect(Collectors.toList());
+                movieDOLambdaQueryWrapper.in(MovieDO::getId, movieIds);
+            }
+            IPage<MovieDO> movieDOPage = this.page(page, movieDOLambdaQueryWrapper);
+            List<MovieDO> movieDORecords = movieDOPage.getRecords();
+            if (CollectionUtils.isEmpty(movieDORecords)) {
+                return ResponseMessageDTO.success(PageResultDTO
+                        .<MovieDTO>builder()
+                        .page(Long.valueOf(query.getPageNum()))
+                        .pageSize(Long.valueOf(query.getPageSize()))
+                        .rows(Collections.emptyList())
+                        .total(Constants.EMPTY_NUM)
+                        .build());
+            }
+            List<MovieDTO> movieDTOList = ConversionUtils.transformList(movieDORecords, MovieDTO.class);
+            pageResultDTO.setRows(movieDTOList);
+            pageResultDTO.setTotal(movieDOPage.getTotal());
+            pageResultDTO.setPageSize(movieDOPage.getSize());
+            pageResultDTO.setPage(movieDOPage.getCurrent());
+            pageResultDTO.setTotalPage(movieDOPage.getPages());
+        } catch (Exception e) {
+            return ResponseMessageDTO
+                    .<PageResultDTO<MovieDTO>>builder()
+                    .code(CodeEnum.QUERY_ERROR.getCode())
+                    .message("电影分页异常")
+                    .success(Boolean.FALSE)
+                    .build();
+        }
+        return ResponseMessageDTO.success(pageResultDTO);
+    }
+
+//    @Override
+//    public ResponseMessageDTO<List<MovieDTO>> getUserLikeMovies(Long userId) {
+//        //根据user_id获取user_label
+//        LambdaQueryWrapper<UserLabelDO> userLabelDOLambdaQueryWrapper=new LambdaQueryWrapper<UserLabelDO>()
+//                .eq(UserLabelDO::getUserId,userId)
+//                .eq(UserLabelDO::getStatus, UserLabelEnum.AFTER.getCode());
+//        UserLabelDO userLabelDO=userLabelService.getOne(userLabelDOLambdaQueryWrapper);
+//        String
+//        //获取所有未被删除的电影
+//        LambdaQueryWrapper<MovieDO> movieDOLambdaQueryWrapper=new LambdaQueryWrapper<MovieDO>()
+//                .eq(MovieDO::getDeleted,DeleteEnum.NO_DELETE.getCode());
+//        List<MovieDO> movieDOList=this.list(movieDOLambdaQueryWrapper);
+//        //获取每个电影在user_label中出现的次数，采用hashMap存储,key为movie_id,value为所有的label出现次数
+//        HashMap<String,Integer> hashMap=new HashMap<>();
+//        movieDOList.forEach(
+//                item->{
+//                    //年份
+//                    //将电影的year转化为label_id
+//                    LambdaQueryWrapper<LabelDO> labelDOLambdaQueryWrapper=new LambdaQueryWrapper<LabelDO>()
+//
+//                }
+//
+//        );
+//    }
+
+    @Override
+    public ResponseMessageDTO<String> getPosterUrl(MultipartFile file){
+        log.info("是否为空:"+file.isEmpty());
+        if (!file.isEmpty()) {
+            String uploadImg = UploadUtil.uploadPoster(file);
+            if (StrUtil.isEmpty(uploadImg)) {
+                return ResponseMessageDTO.success("海报上传失败！");
+            }
+            return ResponseMessageDTO.success(uploadImg);
+        }
+        return ResponseMessageDTO.success("海报上传失败！");
+    }
+
 }

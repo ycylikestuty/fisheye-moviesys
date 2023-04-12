@@ -4,6 +4,7 @@ package com.gdesign.fisheyemoviesys.entity.dto;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * @author ycy
@@ -47,4 +48,19 @@ public class UserDTO extends BaseInfoDTO implements Serializable {
      * 头像链接
      */
     private String img;
+
+    /**
+     * 用户注册时的地区数组
+     */
+    private List<Long> area;
+
+    /**
+     * 用户注册时的电影类型数组
+     */
+    private List<String> type;
+
+    /**
+     * 用户注册时的电影年份数组
+     */
+    private List<String> year;
 }

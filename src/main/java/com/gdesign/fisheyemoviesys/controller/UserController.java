@@ -9,6 +9,7 @@ import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.Result;
 import com.gdesign.fisheyemoviesys.entity.dto.UserDTO;
 import com.gdesign.fisheyemoviesys.entity.param.UserQuery;
+import com.gdesign.fisheyemoviesys.service.LabelService;
 import com.gdesign.fisheyemoviesys.service.UserService;
 import com.gdesign.fisheyemoviesys.utils.JwtUtil;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,6 +28,9 @@ public class UserController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private LabelService labelService;
 
     /**
      * 分页查询用户
@@ -68,6 +72,12 @@ public class UserController {
 
     @PostMapping("/register")
     public Result registerUser(@RequestBody UserDTO userDTO){
-        return userService.registerUser(userDTO);
+        return labelService.registerUser(userDTO);
+    }
+
+    @PostMapping("/updateInfo")
+    @Log(title = "用户管理", businessType = "用户更新信息")
+    public ResponseMessageDTO<String> updateInfo(@RequestBody UserDTO userDTO){
+        return userService.updateUserInfo(userDTO);
     }
 }

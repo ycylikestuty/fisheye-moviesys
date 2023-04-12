@@ -5,12 +5,7 @@ import com.gdesign.fisheyemoviesys.entity.CommentDO;
 import com.gdesign.fisheyemoviesys.entity.dto.CommentDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
-import com.gdesign.fisheyemoviesys.entity.param.CommentQuery;
-import com.gdesign.fisheyemoviesys.entity.param.SpecialCommentQuery;
-import com.gdesign.fisheyemoviesys.entity.param.UserCollectParam;
-import com.gdesign.fisheyemoviesys.entity.param.UserStarParam;
-
-import java.util.List;
+import com.gdesign.fisheyemoviesys.entity.param.*;
 
 /**
  * @author ycy
@@ -25,7 +20,7 @@ public interface CommentService extends IService<CommentDO> {
     ResponseMessageDTO<PageResultDTO<CommentDTO>> pageQueryCommentByCondition(CommentQuery query);
 
     /**
-     * 跟新评论状态
+     * 更新评论状态
      *
      * @param commentDTO 评论详情
      * @return 更新是否成功
@@ -88,7 +83,7 @@ public interface CommentService extends IService<CommentDO> {
      * @param commentDTO 评论
      * @return 新增是否成功
      */
-    ResponseMessageDTO<Boolean> addComment(CommentDTO commentDTO);
+    ResponseMessageDTO<String> addComment(CommentDTO commentDTO);
 
     /**
      * 修改评论状态
@@ -96,4 +91,40 @@ public interface CommentService extends IService<CommentDO> {
      * @return 修改是否成功
      */
     ResponseMessageDTO<Boolean> updateCommentStatusById(Long commentId);
+
+    /**
+     * 分页获取最新的收藏影评
+     * @param query
+     * @return
+     */
+    ResponseMessageDTO<PageResultDTO<CommentDTO>> getLastCollectComments(UserCollectQuery query);
+
+    /**
+     * 分页获取最多的收藏影评
+     * @param query
+     * @return
+     */
+    ResponseMessageDTO<PageResultDTO<CommentDTO>> getHotCollectComments(UserCollectQuery query);
+
+    /**
+     * 根据用户id、评论id删除用户收藏
+     * @param param 用户id、评论id、收藏种类
+     * @return 收藏是否成功
+     */
+    ResponseMessageDTO<Boolean> deleteCollect(UserCollectParam param);
+
+    /**
+     * 分页获取用户影评
+     * @param query 查询条件
+     * @return
+     */
+    ResponseMessageDTO<PageResultDTO<CommentDTO>> getCommentsByUserId(UserCommentQuery query);
+
+    /**
+     * 更新评论详情
+     *
+     * @param commentDTO 评论详情
+     * @return 更新是否成功
+     */
+    ResponseMessageDTO<String> updateCommentDetail(CommentDTO commentDTO);
 }

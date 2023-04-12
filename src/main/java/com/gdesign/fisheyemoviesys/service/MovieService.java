@@ -1,11 +1,16 @@
 package com.gdesign.fisheyemoviesys.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.gdesign.fisheyemoviesys.entity.MovieDO;
 import com.gdesign.fisheyemoviesys.entity.dto.MovieDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
+import com.gdesign.fisheyemoviesys.entity.dto.Result;
 import com.gdesign.fisheyemoviesys.entity.param.MovieQuery;
+import com.gdesign.fisheyemoviesys.entity.param.SpecialMovieQuery;
+import com.gdesign.fisheyemoviesys.entity.param.UserCollectQuery;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -69,6 +74,13 @@ public interface MovieService extends IService<MovieDO> {
     ResponseMessageDTO<List<MovieDTO>> getHighScoreMovies();
 
     /**
+     * 根据用户id获取推荐用户的电影
+     * @param userId 用户id
+     * @return 推荐电影集合
+     */
+//    ResponseMessageDTO<List<MovieDTO>> getUserLikeMovies(Long userId);
+
+    /**
      * 根据id查询电影
      * @param Id
      * @return 电影
@@ -81,4 +93,47 @@ public interface MovieService extends IService<MovieDO> {
      * @return 更新成功
      */
     ResponseMessageDTO<Boolean> updateMovieScore(MovieDTO movieDTO);
+
+    /**
+     * 分页条件查询
+     *
+     * @param query 查询条件
+     * @return 电影集
+     */
+    ResponseMessageDTO<PageResultDTO<MovieDTO>> getCollectMovies(UserCollectQuery query);
+
+    /**
+     * 根据电影名称获取电影集合
+     * @param movieName 电影名称
+     * @return 电影集合
+     */
+    ResponseMessageDTO<List<MovieDTO>> getMoviesByName(String movieName);
+
+    /**
+     * 获取电影的全部年份
+     * @return
+     */
+    ResponseMessageDTO<List<String>> getAllMovieYear();
+
+    /**
+     * 获取电影的全部地区
+     * @return
+     */
+    ResponseMessageDTO<List<String>> getAllMovieArea();
+
+    /**
+     * 分页条件查询
+     *
+     * @param query 查询条件
+     * @return 电影集
+     */
+    ResponseMessageDTO<PageResultDTO<MovieDTO>> getAllMovieByTypeAreaYear(SpecialMovieQuery query);
+
+    /**
+     * 返回电影url
+     *
+     * @param file
+     * @return
+     */
+    ResponseMessageDTO<String> getPosterUrl(MultipartFile file) ;
 }

@@ -36,4 +36,27 @@ public class UploadUtil {
         }
         return prePath + "/" + filename;
     }
+
+    public static String uploadPoster(MultipartFile file) {
+        Calendar calendar = Calendar.getInstance();
+        String prePath = "/" + calendar.get(Calendar.YEAR) + "/" + (calendar.get(Calendar.MONTH) + 1);
+        File trueFile = new File("E:/poster" + prePath);
+        if (!trueFile.exists()) {
+            if (!trueFile.mkdirs()) {
+                return null;
+            }
+        }
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+        String extension = FilenameUtils.getExtension(file.getOriginalFilename());
+        if (StrUtil.isEmpty(extension)) {
+            extension = MimeTypeUtils.getExtension(file.getContentType());
+        }
+        String filename = uuid + "." + extension;
+        try {
+            file.transferTo(new File("E:/poster" + prePath + "/" + filename));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return prePath + "/" + filename;
+    }
 }

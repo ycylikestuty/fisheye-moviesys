@@ -59,6 +59,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private static final String[] URL_WHITELIST = {
             "/login",
             "/user/register",
+            "/type/list",
+            "/movie/getAllMovieYear",
             "/captcha",
             "/favicon.ico",
     };
@@ -82,7 +84,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 //permitAll() 不管登入,不登入 都能访问
                 .and()
                 .authorizeRequests()
-                .antMatchers(URL_WHITELIST).anonymous()
+                .antMatchers(URL_WHITELIST).permitAll()
                 .antMatchers(
                         HttpMethod.GET,
                         "/",

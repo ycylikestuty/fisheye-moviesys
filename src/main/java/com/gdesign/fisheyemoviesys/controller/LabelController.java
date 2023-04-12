@@ -4,6 +4,7 @@ import com.gdesign.fisheyemoviesys.annotation.Log;
 import com.gdesign.fisheyemoviesys.entity.dto.LabelDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
+import com.gdesign.fisheyemoviesys.entity.dto.UserLabelDTO;
 import com.gdesign.fisheyemoviesys.entity.param.LabelQuery;
 import com.gdesign.fisheyemoviesys.service.LabelService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,5 +45,15 @@ public class LabelController {
     @PostMapping(path = "/count")
     public ResponseMessageDTO<List<LabelDTO>> count(@RequestBody LabelDTO labelDTO) {
         return labelService.countLabelByCondition(labelDTO);
+    }
+
+    @PostMapping(path = "/getOldUserLabelList")
+    public ResponseMessageDTO<List<LabelDTO>> getUserLabelList(@RequestBody UserLabelDTO userLabelDTO){
+        return labelService.getOldUserLabelList(userLabelDTO);
+    }
+
+    @PostMapping(path = "/getNewUserLabelList")
+    public ResponseMessageDTO<List<LabelDTO>> getNewUserLabelList(@RequestBody UserLabelDTO userLabelDTO){
+        return labelService.getNewUserLabelList(userLabelDTO);
     }
 }

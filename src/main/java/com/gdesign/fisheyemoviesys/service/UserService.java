@@ -85,5 +85,12 @@ public interface UserService extends IService<UserDO> {
      * @param userDTO 用户信息
      * @return 注册成功与否
      */
-    Result registerUser(UserDTO userDTO);
+//    Result registerUser(UserDTO userDTO);
+
+    /**
+     * 更改用户端信息
+     * @param userDTO 用户信息
+     * @return 是否更改成功
+     */
+    ResponseMessageDTO<String> updateUserInfo(UserDTO userDTO);
 }

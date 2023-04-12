@@ -1,8 +1,6 @@
-package com.gdesign.fisheyemoviesys.entity;
+package com.gdesign.fisheyemoviesys.entity.dto;
 
-import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 
 import java.io.Serializable;
 
@@ -10,10 +8,12 @@ import java.io.Serializable;
  * @author ycy
  */
 @Data
-@EqualsAndHashCode(callSuper = false)
-@TableName("user_label")
-public class UserLabelDO extends BaseInfoDO implements Serializable {
-    private static final long serialVersionUID = -3614114689289888125L;
+@EqualsAndHashCode(callSuper = true)
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class UserLabelDTO extends BaseInfoDTO implements Serializable {
+    private static final long serialVersionUID = 298877352924860673L;
 
     /**
      * 用户id

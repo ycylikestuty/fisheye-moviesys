@@ -30,6 +30,11 @@ public interface Constants {
     Long ORDINARY_NUM = 2L;
 
     /**
+     * 用户禁言状态
+     */
+    Integer PROHIBITIONS_STATUS=1;
+
+    /**
      * 后台管理项目网址
      */
     String ADMIN_WEB = "http://localhost:8200";
@@ -48,4 +53,9 @@ public interface Constants {
      * 电影海报存储路径
      */
     String POSTER_PATH="http://localhost:8100/poster";
+
+    /**
+     * 电影查询时查询全部
+     */
+    String MOVIE_ALL="全部";
 }

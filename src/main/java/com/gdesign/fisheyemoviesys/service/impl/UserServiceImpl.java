@@ -10,39 +10,29 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gdesign.fisheyemoviesys.constants.Constants;
-import com.gdesign.fisheyemoviesys.entity.MenuDO;
-import com.gdesign.fisheyemoviesys.entity.RoleDO;
-import com.gdesign.fisheyemoviesys.entity.UserDO;
-import com.gdesign.fisheyemoviesys.entity.UserRoleDO;
+import com.gdesign.fisheyemoviesys.entity.*;
 import com.gdesign.fisheyemoviesys.entity.dto.PageResultDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.ResponseMessageDTO;
 import com.gdesign.fisheyemoviesys.entity.dto.Result;
 import com.gdesign.fisheyemoviesys.entity.dto.UserDTO;
-import com.gdesign.fisheyemoviesys.entity.enums.CodeEnum;
-import com.gdesign.fisheyemoviesys.entity.enums.DeleteEnum;
-import com.gdesign.fisheyemoviesys.entity.enums.ErrorCodeEnum;
+import com.gdesign.fisheyemoviesys.entity.enums.*;
 import com.gdesign.fisheyemoviesys.entity.param.UserQuery;
 import com.gdesign.fisheyemoviesys.mapper.UserMapper;
-import com.gdesign.fisheyemoviesys.service.MenuService;
-import com.gdesign.fisheyemoviesys.service.RoleService;
-import com.gdesign.fisheyemoviesys.service.UserRoleService;
-import com.gdesign.fisheyemoviesys.service.UserService;
+import com.gdesign.fisheyemoviesys.service.*;
 import com.gdesign.fisheyemoviesys.utils.ConversionUtils;
 import com.gdesign.fisheyemoviesys.utils.RedisUtil;
 import com.gdesign.fisheyemoviesys.utils.UploadUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import java.security.Principal;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -62,6 +52,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 
     @Resource
     private UserRoleService userRoleService;
+
+//    @Resource
+//    private LabelService labelService;
+
+//    @Resource
+//    private UserLabelService userLabelService;
 
     @Override
     public ResponseMessageDTO<UserDTO> getUserByUserName(String username) {
@@ -252,33 +248,104 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         }
     }
 
+//    @Override
+//    public Result registerUser(UserDTO userDTO) {
+//        //验证用户账号是否唯一
+//        LambdaQueryWrapper<UserDO> queryWrapper = new LambdaQueryWrapper<UserDO>()
+//                .eq(UserDO::getUsername, userDTO.getUsername())
+//                .eq(UserDO::getDeleted, DeleteEnum.NO_DELETE.getCode());
+//        UserDO queryUser = this.getOne(queryWrapper);
+//        if (null != queryUser) {
+//            return Result.fail("该用户账号已经存在，请重新输入");
+//        }
+//        //新增user表
+//        BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
+//        UserDO userDO = new UserDO();
+//        BeanUtils.copyProperties(userDTO, userDO);
+//        userDO.setImg("https://img1.doubanio.com/view/group_topic/l/public/p560183288.webp");
+//        userDO.setPassword(bCryptPasswordEncoder.encode(userDTO.getPassword()));
+//        //新增user_role表,角色固定为普通用户
+//        UserRoleDO userRoleDO = new UserRoleDO();
+//        userRoleDO.setRoleId(Constants.ORDINARY_NUM);
+//        //新增user_label表
+//        UserLabelDO userLabelDO = new UserLabelDO();
+////        userLabelDO.setStatus(UserLabelEnum.BEFORE.getCode());
+//        //从label表中根据kind和name查询出id，再将id组合成字符串
+//        //地区
+//        List<Long> areaIds = userDTO.getArea();
+//        List<String> areaString = new ArrayList<>();
+//        areaIds.forEach(
+//                item -> {
+//                    log.info("item:"+item);
+//                    for (AreaEnum areaItem : AreaEnum.values()) {
+//                        //注意areaItem的code类型为Integer，要进行转换
+//                        if (item.equals(Long.valueOf(areaItem.getCode()))) {
+//                            log.info("areaItem:"+areaItem.getArea());
+//                            LambdaQueryWrapper<LabelDO> labelDOLambdaQueryWrapper = new LambdaQueryWrapper<LabelDO>()
+//                                    .eq(LabelDO::getName, areaItem.getArea())
+//                                    .eq(LabelDO::getKind, KindEnum.AREA.getCode());
+//                            areaString.add(labelService.getOne(labelDOLambdaQueryWrapper).getId().toString());
+//                        }
+//                    }
+//                }
+//        );
+//        String area = areaString.stream().collect(Collectors.joining(","));
+//        //年份
+//        List<String> yearIds = userDTO.getYear();
+//        List<String> yearString = new ArrayList<>();
+//        yearIds.forEach(
+//                item -> {
+//                    LambdaQueryWrapper<LabelDO> labelDOLambdaQueryWrapper = new LambdaQueryWrapper<LabelDO>()
+//                            .eq(LabelDO::getName, item)
+//                            .eq(LabelDO::getKind, KindEnum.YEAR.getCode());
+//                    yearString.add(labelService.getOne(labelDOLambdaQueryWrapper).getId().toString());
+//                }
+//        );
+//        String year = yearString.stream().collect(Collectors.joining(","));
+//        //类型
+//        List<String> typeIds = userDTO.getType();
+//        List<String> typeString = new ArrayList<>();
+//        typeIds.forEach(
+//                item -> {
+//                    LambdaQueryWrapper<LabelDO> labelDOLambdaQueryWrapper = new LambdaQueryWrapper<LabelDO>()
+//                            .eq(LabelDO::getName, item)
+//                            .eq(LabelDO::getKind, KindEnum.GENRE.getCode());
+//                    typeString.add(labelService.getOne(labelDOLambdaQueryWrapper).getId().toString());
+//                }
+//        );
+//        String type = typeString.stream().collect(Collectors.joining(","));
+//        if (this.save(userDO)) {
+//            userRoleDO.setUserId(userDO.getId());
+//            userLabelDO.setStatus(UserLabelEnum.BEFORE.getCode());
+//            userLabelDO.setUserId(userDO.getId());
+//            userLabelDO.setArea(area);
+//            userLabelDO.setYear(year);
+//            userLabelDO.setGenre(type);
+//            if (userRoleService.save(userRoleDO) && userLabelService.save(userLabelDO)) {
+//                return Result.succ("注册成功");
+//            }
+//            return Result.fail("注册失败");
+//        }
+//        return Result.fail("注册失败");
+//    }
+
     @Override
-    public Result registerUser(UserDTO userDTO) {
-        //验证用户账号是否唯一
-        LambdaQueryWrapper<UserDO> queryWrapper=new LambdaQueryWrapper<UserDO>()
-                .eq(UserDO::getUsername,userDTO.getUsername())
-                .eq(UserDO::getDeleted,DeleteEnum.NO_DELETE.getCode());
-        UserDO queryUser=this.getOne(queryWrapper);
-        if(null!=queryUser){
-            return Result.fail("该用户账号已经存在，请重新输入");
-        }
-        //新增user表
-        BCryptPasswordEncoder bCryptPasswordEncoder=new BCryptPasswordEncoder();
+    public ResponseMessageDTO<String> updateUserInfo(UserDTO userDTO) {
+        LambdaUpdateWrapper<UserDO> updateWrapper = new LambdaUpdateWrapper<UserDO>()
+                .eq(UserDO::getId, userDTO.getId())
+                .set(UserDO::getNickname, userDTO.getNickname());
         UserDO userDO = new UserDO();
-        BeanUtils.copyProperties(userDTO, userDO);
-        userDO.setImg("https://img1.doubanio.com/view/group_topic/l/public/p560183288.webp");
-        userDO.setPassword(bCryptPasswordEncoder.encode(userDTO.getPassword()));
-        //新增user_role表,角色固定为普通用户
-        UserRoleDO userRoleDO=new UserRoleDO();
-        userRoleDO.setRoleId(Constants.ORDINARY_NUM);
-        //后面可能会新增user_label表
-        if (this.save(userDO)) {
-            userRoleDO.setUserId(userDO.getId());
-            if(userRoleService.save(userRoleDO)){
-                return Result.succ("注册成功");
-            }
-            return Result.fail("注册失败");
+        if (this.update(userDO, updateWrapper)) {
+            //在redis中更新用户信息
+            LambdaQueryWrapper<UserDO> queryWrapper = new LambdaQueryWrapper<UserDO>()
+                    .eq(UserDO::getId, userDTO.getId())
+                    .eq(UserDO::getDeleted, DeleteEnum.NO_DELETE.getCode());
+            UserDO newUserDO = this.getOne(queryWrapper);
+            log.info("userName:" + newUserDO.getUsername());
+            UserDTO newUserDTO = this.getUserByUserName(newUserDO.getUsername()).getResult();
+            redisUtil.set("User:" + newUserDO.getUsername(), newUserDTO, 86400);
+            return ResponseMessageDTO.success("修改成功");
         }
-        return Result.fail("注册失败");
+        return ResponseMessageDTO.success("修改失败");
     }
 }
