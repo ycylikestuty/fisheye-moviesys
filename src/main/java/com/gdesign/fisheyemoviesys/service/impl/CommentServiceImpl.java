@@ -427,6 +427,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, CommentDO> im
         }
         //根据收藏id查询是否已经收藏
         if (userCollectService.getCollectByUserId(userCollectParam.getUserId(), userCollectParam.getCollectId(), userCollectParam.getKind())) {//已经收藏则 减字符串
+
             List<String> collectIdsList = new ArrayList<>(Arrays.asList(newCollectIds.split(",")));
             Iterator iterator = collectIdsList.iterator();
             while (iterator.hasNext()) {
@@ -441,7 +442,11 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, CommentDO> im
                 newCollect--;
             }
         } else {//否则 加字符串
-            newCollectIds += "," + userCollectParam.getCollectId().toString();
+            if (newCollectIds.equals("")) {//为新注册的用户，需要加字符串，不加逗号
+                newCollectIds += userCollectParam.getCollectId().toString();
+            } else {
+                newCollectIds += "," + userCollectParam.getCollectId().toString();
+            }
             if (Objects.equals(userCollectParam.getKind(), CollectKindEnum.COMMENT.getCode())) {
                 newCollect++;
             }

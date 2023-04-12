@@ -52,6 +52,9 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, LabelDO> implemen
     @Resource
     private TypeService typeService;
 
+    @Resource
+    private UserStarService userStarService;
+
     @Override
     public ResponseMessageDTO<PageResultDTO<LabelDTO>> pageQueryLabelByCondition(LabelQuery query) {
         PageResultDTO<LabelDTO> pageResultDTO = new PageResultDTO<>();
@@ -227,7 +230,7 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, LabelDO> implemen
         BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
         UserDO userDO = new UserDO();
         BeanUtils.copyProperties(userDTO, userDO);
-        userDO.setImg("https://img1.doubanio.com/view/group_topic/l/public/p560183288.webp");
+        userDO.setImg("http://localhost:8100/img/userImg/momo.webp");
         userDO.setPassword(bCryptPasswordEncoder.encode(userDTO.getPassword()));
         //新增user_role表,角色固定为普通用户
         UserRoleDO userRoleDO = new UserRoleDO();
@@ -279,6 +282,10 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, LabelDO> implemen
                 }
         );
         String type = typeString.stream().collect(Collectors.joining(","));
+        //新增user_collect和user_star表
+        UserCollectDO userMovieCollectDO = new UserCollectDO();
+        UserCollectDO userCommentCollectDO = new UserCollectDO();
+        UserStarDO userStarDO = new UserStarDO();
         if (userService.save(userDO)) {
             userRoleDO.setUserId(userDO.getId());
             //保存userLabel状态为0的数据同时，保存状态为1的数据，两者数据相同
@@ -287,7 +294,18 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, LabelDO> implemen
             userLabelDO.setArea(area);
             userLabelDO.setYear(year);
             userLabelDO.setGenre(type);
-            if (userRoleService.save(userRoleDO) && userLabelService.save(userLabelDO)) {
+            //设置user_collect
+            userMovieCollectDO.setUserId(userDO.getId());
+            userMovieCollectDO.setKind(CollectKindEnum.MOVIE.getCode());
+            userMovieCollectDO.setCollectIds("");
+            userCommentCollectDO.setUserId(userDO.getId());
+            userCommentCollectDO.setKind(CollectKindEnum.COMMENT.getCode());
+            userCommentCollectDO.setCollectIds("");
+            //设置user_star
+            userStarDO.setUserId(userDO.getId());
+            userStarDO.setCommentIds("");
+            if (userRoleService.save(userRoleDO) && userLabelService.save(userLabelDO) && userCollectService.save(userCommentCollectDO)
+                    && userCollectService.save(userMovieCollectDO) && userStarService.save(userStarDO)) {
                 userLabelDO = new UserLabelDO();
                 userLabelDO.setStatus(UserLabelEnum.AFTER.getCode());
                 userLabelDO.setUserId(userDO.getId());
@@ -470,9 +488,19 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, LabelDO> implemen
         String year = userLabelDO.getYear();
         String area = userLabelDO.getArea();
         String type = userLabelDO.getGenre();
-        //获取所有未被删除的电影
+        //获取所有未被删除 并未被收藏 的电影
+        LambdaQueryWrapper<UserCollectDO> userCollectDOLambdaQueryWrapper = new LambdaQueryWrapper<UserCollectDO>()
+                .eq(UserCollectDO::getDeleted, DeleteEnum.NO_DELETE.getCode())
+                .eq(UserCollectDO::getKind, CollectKindEnum.MOVIE.getCode())
+                .eq(UserCollectDO::getUserId, userId);
+        UserCollectDO userCollectDO = userCollectService.getOne(userCollectDOLambdaQueryWrapper);
         LambdaQueryWrapper<MovieDO> movieDOLambdaQueryWrapper = new LambdaQueryWrapper<MovieDO>()
                 .eq(MovieDO::getDeleted, DeleteEnum.NO_DELETE.getCode());
+        if (userCollectDO.getCollectIds().equals("") == false) {//若用户未收藏，则查询所有，否则不包括收藏的
+            List<String> stringCollectMovieIds = Arrays.asList(userCollectDO.getCollectIds().split(","));
+            List<Long> collectMovieIds = stringCollectMovieIds.stream().map(Long::valueOf).collect(Collectors.toList());
+            movieDOLambdaQueryWrapper.notIn(CollectionUtils.isNotEmpty(collectMovieIds), MovieDO::getId, collectMovieIds);
+        }
         List<MovieDO> movieDOList = movieService.list(movieDOLambdaQueryWrapper);
         //获取每个电影在user_label中出现的次数，采用hashMap存储,key为movie_id,value为所有的label出现次数
         HashMap<Long, Integer> hashMap = new HashMap<>();
@@ -537,9 +565,9 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, LabelDO> implemen
                 return o2.getValue() - o1.getValue();
             }
         });
-        //获取推荐前十的电影
+        //获取推荐前五的电影
         List<Long> likeMovieIds = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 5; i++) {
             log.info(sortList.get(i).getKey() + ": " + sortList.get(i).getValue());
             //根据hashMap的key即movie_id查询出movie
             likeMovieIds.add(sortList.get(i).getKey());
